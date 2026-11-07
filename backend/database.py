@@ -8,7 +8,7 @@ def get_db_connection():
     conn.row_factory = sqlite3
     return conn
 
-def init_bd():
+def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
