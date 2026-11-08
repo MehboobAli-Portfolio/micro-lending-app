@@ -5,7 +5,7 @@ DB_NAME = "database.db"
 
 def get_db_connection():
     conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3
+    conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
@@ -60,4 +60,4 @@ def init_db():
     print("Database initialization successful.")
 
 if __name__ == '__main__':
-    init_bd()
+    init_db()
