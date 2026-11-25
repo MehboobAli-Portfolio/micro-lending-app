@@ -5,51 +5,73 @@ import bcrypt
 import jwt
 from database import get_db_connection
 
-auth_bp = Blueprint('auth', __name__)
-JWT_SECRET = os.getenv('JWT_SECRET', 'super_secret_micro_lending_key_2026')
+auth_bp = Blueprint("auth", __name__)
+JWT_SECRET = os.getenv("JWT_SECRET", "super_secret_micro_lending_key_2026")
 
-@auth_bp.route('/register', methods=['POST'])
+#register route to create a new user with hashed password, returning appropriate responses for success or failure
+@auth_bp.route("/register", methods=["POST"])
 def register():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    
+    data = request.get_json() or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
     if not username or not password:
-        return jsonify({'error': 'Username and password are required'}), 400
-        
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    
+        return jsonify({"error": "Username and password are required"}), 400
+
+    hashed_password = bcrypt.hashpw(
+        password.encode("utf-8"), bcrypt.gensalt()
+    ).decode("utf-8")
+
     conn = get_db_connection()
     try:
-        conn.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)', (username, hashed_password))
+        conn.execute(
+            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+            (username, hashed_password),
+        )
         conn.commit()
     except Exception:
-        return jsonify({'error': 'Username already exists'}), 400
+        return jsonify({"error": "Username already exists"}), 400
     finally:
         conn.close()
-        
-    return jsonify({'message': 'User registered successfully'}), 201
 
+    return jsonify({"message": "User registered successfully"}), 201
 
-@auth_bp.route('/login', methods=['POST'])
+#login route to authenticate a user and return a JWT token for access to protected routes, with error handling for invalid credentials
+@auth_bp.route("/login", methods=["POST"])
 def login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    
+    data = request.get_json() or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
     if not username or not password:
-        return jsonify({'error': 'Username and password are required'}), 400
-        
+        return jsonify({"error": "Username and password are required"}), 400
+
     conn = get_db_connection()
-    user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+    user = conn.execute(
+        "SELECT * FROM users WHERE username = ?", (username,)
+    ).fetchone()
     conn.close()
-    
-    if user and bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
-        token = jwt.encode({
-            'user_id': user['id'],
-            'exp': datetime.utcnow() + timedelta(hours=8)
-        }, JWT_SECRET, algorithm="HS256")
-        
-        return jsonify({'token': token, 'message': 'Access granted to Finance Manager dashboard.'}), 200
-        
-    return jsonify({'error': 'Authentication failure, access denied.'}), 401
+
+    if user and bcrypt.checkpw(
+        password.encode("utf-8"), user["password_hash"].encode("utf-8")
+    ):
+        token = jwt.encode(
+            {
+                "user_id": user["id"],
+                "exp": datetime.utcnow() + timedelta(hours=8),
+            },
+            JWT_SECRET,
+            algorithm="HS256",
+        )
+
+        return (
+            jsonify(
+                {
+                    "token": token,
+                    "message": "Access granted to Finance Manager dashboard.",
+                }
+            ),
+            200,
+        )
+
+    return jsonify({"error": "Authentication failure, access denied."}), 401
